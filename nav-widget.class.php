@@ -64,7 +64,8 @@
         *
         * @deprecated - use get_link_by_id instead
         * @param mixed $id
-        */
+         * @return bool|\NavWidgetLink
+         */
         public function get_link( $id )
         {
             return $this->get_link_by_id($id);
@@ -77,7 +78,8 @@
         * @deprecated - use get_link_by_id
         * @param mixed $id
         * @param mixed $link
-        */
+         * @return bool|\NavWidgetLink
+         */
         public function get_link_walker( $id, $link )
         {
             return $this->get_link_by_id($id, $link);
@@ -91,29 +93,27 @@
         * @param NavWidgetLink $link
         * @return NavWidgetLink|bool false if not found
         */
-        public function get_link_by_id($id, NavWidgetLink $link=null)
+        public function get_link_by_id( $id, NavWidgetLink $link = null )
         {
-            if (is_null($link))
-            {
+            if( is_null( $link ) ){
                 $links = $this->links;
             }
             else
             {
-                if ($id == $link->get_id())
-                {
+                if( $id == $link->get_id() ){
                     return $link;
                 }
+
                 $links = $link->get_children();
             }
 
-            foreach ($links as $child)
+            foreach( $links as $child )
             {
-                if( $id == $child->get_id() )
-                {
+                if( $id == $child->get_id() ){
                     return $child;
                 }
-                if ($found = $this->get_link_by_id($id, $child))
-                {
+
+                if( $found = $this->get_link_by_id( $id, $child ) ){
                     return $found;
                 }
             }
@@ -197,7 +197,8 @@
         * @param mixed $url
         * @param mixed $text
         * @param mixed $open_in_new_window
-        */
+         * @return bool
+         */
         public function edit_link( $id, $url, $text, $open_in_new_window )
         {
 
@@ -307,8 +308,10 @@
                 <?php if( $link->has_children() ) : ?>
                     <ul class="children">
                         <?php
-                            foreach( $link->get_children() as $child )
+                            foreach( $link->get_children() as $child ){
+	                            var_dump( $child->is_child( $link ) );
                                 $this->build_link_admin_li( $child );
+                            }
                         ?>
                     </ul>
                 <?php endif; ?>
@@ -329,7 +332,7 @@
             // do not show current link or children of current link.
             if( $this->walker_current_link instanceof NavWidgetLink &&
                 $this->walker_current_link->get_id() == $link->get_id() &&
-                ! array_key_exists( $this->walker_current_link->get_id(), $link->get_children() ))
+                ! array_key_exists( $this->walker_current_link->get_id(), $link->get_children() ) )
             {
                 // do nothing
             }
