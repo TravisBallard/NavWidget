@@ -143,6 +143,16 @@
             return $this->has_children() ? $this->children : array();
         }
 
+		/**
+		 * See if a NavWidgetLink is a child of this instance
+		 * @param NavWidgetLink $link
+		 * @return bool
+		 */
+		public function is_child(NavWidgetLink $link)
+		{
+			return in_array($link, $this->children);
+		}
+
         /**
         * Set the child links for this link object
         *

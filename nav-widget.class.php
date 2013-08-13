@@ -326,11 +326,10 @@
         {
             $select = $selected ? ' selected="selected"' : '';
 
-            # do not show current link or children of current link.
+            // do not show current link or children of current link.
             if( $this->walker_current_link instanceof NavWidgetLink &&
                 $this->walker_current_link->get_id() == $link->get_id() &&
-                ! array_key_exists( $this->walker_current_link->get_id(), $link->get_children() )
-            )
+                ! array_key_exists( $this->walker_current_link->get_id(), $link->get_children() ))
             {
                 // do nothing
             }
@@ -343,21 +342,26 @@
             {
                 foreach( $link->get_children() as $child )
                 {
-                    if( $this->walker_current_link instanceof NavWidgetLink && $this->walker_current_link->get_id() == $link->get_id() )
-                            $this->link_select_option( $child, 1 );
-                        else
-                            $this->link_select_option( $child );
+                    if( $this->walker_current_link instanceof NavWidgetLink &&
+						$this->walker_current_link->get_id() == $link->get_id() )
+					{
+						$this->link_select_option( $child, 1 );
+					}
+					else
+					{
+						$this->link_select_option( $child );
+					}
                 }
             }
         }
 
         /**
-        * build parent select dropdown for admin edit fields
+        * build parent select drop-down for admin edit fields
         *
         * @param mixed $name
-        * @param mixed $current_link
+        * @param NavWidgetLink|bool(false) $current_link
         */
-        public function build_parent_link_select( $name, $current_link = false )
+        public function build_parent_link_select( $name, NavWidgetLink $current_link = false )
         {
             $this->walker_current_link = $current_link;
 
@@ -365,15 +369,23 @@
             {
                 printf( '<select name="%s[parent]" id="link-parent%s" >', $name, $current_link ? '-'.$current_link->get_id() : '' );
 
-                    printf( '<option value="0"%s>No Parent</option>', $current_link && $current_link->get_parent_ID() == 0 ? ' selected="selected"' : '' );
+				printf( '<option value="0"%s>No Parent</option>', $current_link && $current_link->get_parent_ID() == 0 ? ' selected="selected"' : '' );
 
-                    foreach( $this->get_links() as $link )
-                    {
-                        if( $this->walker_current_link instanceof NavWidgetLink && $this->walker_current_link->get_id() == $link->get_parent_ID() )
-                            $this->link_select_option( $link, 1 );
-                        else
-                            $this->link_select_option( $link );
-                    }
+				foreach( $this->get_links() as $link )
+				{
+					if( !$current_link->is_child($link) )
+					{
+						if( $this->walker_current_link instanceof NavWidgetLink &&
+							$this->walker_current_link->get_id() == $link->get_parent_ID() )
+						{
+							$this->link_select_option( $link, 1 );
+						}
+						else
+						{
+							$this->link_select_option( $link );
+						}
+					}
+				}
 
                 printf( '</select>' );
             }
