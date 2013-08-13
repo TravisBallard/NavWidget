@@ -361,8 +361,11 @@
         * @param mixed $name
         * @param NavWidgetLink|bool(false) $current_link
         */
-        public function build_parent_link_select( $name, NavWidgetLink $current_link = false )
+        public function build_parent_link_select( $name, NavWidgetLink $current_link = null )
         {
+	        if( is_null( $current_link ) )
+		        $current_link = false;
+
             $this->walker_current_link = $current_link;
 
             if( $this->has_links() )
@@ -373,7 +376,7 @@
 
 				foreach( $this->get_links() as $link )
 				{
-					if( !$current_link->is_child($link) )
+					if( $current_link && ! $current_link->is_child( $link ) )
 					{
 						if( $this->walker_current_link instanceof NavWidgetLink &&
 							$this->walker_current_link->get_id() == $link->get_parent_ID() )
