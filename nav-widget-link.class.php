@@ -33,8 +33,10 @@
         * set the url
         *
         * @param mixed $url
+		* @return void
         */
-        public function set_url( $url ){
+        public function set_url( $url )
+		{
             $this->url = esc_url( $url );
         }
 
@@ -42,8 +44,10 @@
         * set the text
         *
         * @param mixed $text
+		* @return void
         */
-        public function set_text( $text ){
+        public function set_text( $text )
+		{
             $this->text = esc_attr( $text );
         }
 
@@ -51,49 +55,57 @@
         * set open in new window value to true or false
         *
         * @param mixed $open_in_new_window
+		* @return void
         */
-        public function set_open_in_new_window( $open_in_new_window ){
-            $this->open_in_new_window = (bool)$open_in_new_window === true ? true : false;
+        public function set_open_in_new_window( $open_in_new_window )
+		{
+            $this->open_in_new_window = (bool)$open_in_new_window;
         }
 
         /**
         * set parent link id
         *
         * @param mixed $id
+		* @return void
         */
-        public function set_parent_ID( $id ){
+        public function set_parent_ID( $id )
+		{
             $this->parent_ID = esc_attr( $id );
         }
 
         /**
         * get value of open in new window property
-        *
+        * @return bool
         */
-        public function open_in_new_window(){
+        public function open_in_new_window()
+		{
             return (bool)$this->open_in_new_window;
         }
 
         /**
         * get link id
-        *
+        * @return mixed
         */
-        public function get_id(){
+        public function get_id()
+		{
             return $this->ID;
         }
 
         /**
         * get the url
-        *
+        * @return string
         */
-        public function get_url(){
+        public function get_url()
+		{
             return $this->url;
         }
 
         /**
         * get the link text
-        *
+        * @return string
         */
-        public function get_text(){
+        public function get_text()
+		{
             return $this->text;
         }
 
@@ -101,13 +113,14 @@
         * get the parent link ID
         *
         */
-        public function get_parent_ID(){
+        public function get_parent_ID()
+		{
             return $this->parent_ID;
         }
 
         /**
         * build the link so we dont have to do this for each one on output
-        *
+        * @return mixed
         */
         public function get_link()
         {
@@ -129,17 +142,19 @@
 
         /**
         * check if there's children or not based on the size of the array
-        *
+        * @return bool
         */
-        public function has_children(){
-            return count( $this->children ) == 0 ? false : true;
+        public function has_children()
+		{
+            return (count( $this->children ) > 0);
         }
 
         /**
         * get children
-        *
+        * @return array<NavWidgetLink>
         */
-        public function get_children(){
+        public function get_children()
+		{
             return $this->has_children() ? $this->children : array();
         }
 
@@ -150,7 +165,19 @@
 		 */
 		public function is_child(NavWidgetLink $link)
 		{
-			return in_array($link, $this->children);
+			if (in_array($link, $this->children))
+			{
+				return true;
+			}
+			foreach ($this->children as $child)
+			{
+				if ($child instanceof NavWidgetLink &&
+					$child->is_child($link))	// NOTE: recursion
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
         /**
@@ -158,14 +185,24 @@
         *
         * @param array<NavWidgetLink> $children
         */
-        public function set_children(array $children){
-            $this->children = $children;
+        public function set_children(array $children)
+		{
+			$arr = array();
+			foreach ($children as $child)
+			{
+				if ($child instanceof NavWidgetLink)
+				{
+					$arr[] = $child;
+				}
+			}
+            $this->children = $arr;
         }
 
         /**
         * delete a child link
         *
         * @param mixed $id
+		* @return bool
         */
         public function delete_child( $id )
         {
