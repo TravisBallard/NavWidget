@@ -165,18 +165,19 @@
 		 */
 		public function is_child(NavWidgetLink $link)
 		{
-			if (in_array($link, $this->children))
-			{
+			if( in_array( $link, $this->children ) ){
 				return true;
 			}
-			foreach ($this->children as $child)
+
+			foreach( $this->children as $child )
 			{
-				if ($child instanceof NavWidgetLink &&
-					$child->is_child($link))	// NOTE: recursion
+				if( $child instanceof NavWidgetLink &&
+					$child->is_child( $link ) )	// NOTE: recursion
 				{
 					return true;
 				}
 			}
+
 			return false;
 		}
 

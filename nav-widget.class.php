@@ -165,6 +165,11 @@
                 // nothing to do, the parent-id is the same
                 return true;
             }
+	        elseif( $parent && $link->is_child( $parent ) )
+	        {
+		        // cannot set parent id to child
+		        return false;
+	        }
 
             // clone the link so we are working with a fresh object reference
             $link = clone $link;
@@ -292,7 +297,7 @@
                         </p>
                         <p>
                             <label for="link-parent-<?php echo $link->get_id(); ?>">Parent</label>
-                            <?php $this->build_parent_link_select( 'edit_nav_menu_link', $link ); ?>
+                            <?php echo $this->build_parent_link_select( 'edit_nav_menu_link', $link ); ?>
                         </p>
                         <p class="submit">
                             <input type="submit" value="Save Changes" class="button-primary submit-butotn" />
@@ -308,8 +313,8 @@
                 <?php if( $link->has_children() ) : ?>
                     <ul class="children">
                         <?php
+                            // recursion
                             foreach( $link->get_children() as $child ){
-	                            var_dump( $child->is_child( $link ) );
                                 $this->build_link_admin_li( $child );
                             }
                         ?>
@@ -319,81 +324,95 @@
             <?php
         }
 
-        /**
-        * loop through links and children outputting option tags for a select tag
-        *
-        * @param mixed $link
-        * @param mixed $selected
-        */
-        public function link_select_option( NavWidgetLink $link, $selected = false )
+	    /**
+	     * loop through links and children outputting option tags for a select tag
+	     *
+	     * @param mixed $link
+	     * @param NavWidgetLink $parent_link
+	     * @param mixed $selected
+	     * @return string
+	     */
+        public function link_select_option( NavWidgetLink $link, NavWidgetLink $parent_link = null, $selected = false )
         {
-            $select = $selected ? ' selected="selected"' : '';
-
             // do not show current link or children of current link.
-            if( $this->walker_current_link instanceof NavWidgetLink &&
-                $this->walker_current_link->get_id() == $link->get_id() &&
-                ! array_key_exists( $this->walker_current_link->get_id(), $link->get_children() ) )
-            {
-                // do nothing
-            }
-            else
-            {
-                printf( '<option value="%s"%s>%s</option>', $link->get_id(), $select, $link->get_text() );
-            }
+	        if( $parent_link && $parent_link->get_id() == $link->get_id() )
+	        {
+		        return '';
+	        }
+
+	        $out = '';
+	        $select = $selected ? ' selected="selected"' : '';
+
+            $out .= sprintf( '<option value="%s"%s>%s</option>', $link->get_id(), $select, /*(int)( $parent_link && $parent_link->get_parent_ID() == $link->get_id() ) ,*/$link->get_text() );
 
             if( $link->has_children() )
             {
                 foreach( $link->get_children() as $child )
                 {
-                    if( $this->walker_current_link instanceof NavWidgetLink &&
-						$this->walker_current_link->get_id() == $link->get_id() )
+                    if( $parent_link &&
+						$parent_link->get_parent_ID() == $link->get_id() )
 					{
-						$this->link_select_option( $child, 1 );
+						$out .= $this->link_select_option( $child, $parent_link, 1 );
 					}
 					else
 					{
-						$this->link_select_option( $child );
+						$out .= $this->link_select_option( $child, $parent_link );
 					}
                 }
             }
+
+	        return $out;
         }
 
         /**
         * build parent select drop-down for admin edit fields
         *
         * @param mixed $name
-        * @param NavWidgetLink|bool(false) $current_link
-        */
-        public function build_parent_link_select( $name, NavWidgetLink $current_link = null )
+        * @param NavWidgetLink|bool(false) $parent_link
+         * @return string
+         */
+        public function build_parent_link_select( $name, NavWidgetLink $parent_link = null )
         {
-	        if( is_null( $current_link ) )
-		        $current_link = false;
-
-            $this->walker_current_link = $current_link;
+	        $out = '';
 
             if( $this->has_links() )
             {
-                printf( '<select name="%s[parent]" id="link-parent%s" >', $name, $current_link ? '-'.$current_link->get_id() : '' );
 
-				printf( '<option value="0"%s>No Parent</option>', $current_link && $current_link->get_parent_ID() == 0 ? ' selected="selected"' : '' );
+                $out .= sprintf( '<select name="%s[parent]" id="link-parent%s" >', $name, $parent_link ? '-'.$parent_link->get_id() : '' );
+	            $out .= sprintf( '<option value="0"%s>No Parent</option>', (!$parent_link || !$parent_link->get_parent_ID()) ? ' selected="selected"' : '' );
 
-				foreach( $this->get_links() as $link )
-				{
-					if( $current_link && ! $current_link->is_child( $link ) )
-					{
-						if( $this->walker_current_link instanceof NavWidgetLink &&
-							$this->walker_current_link->get_id() == $link->get_parent_ID() )
-						{
-							$this->link_select_option( $link, 1 );
-						}
-						else
-						{
-							$this->link_select_option( $link );
-						}
-					}
-				}
+	            $out .= $this->build_parent_link_options( $parent_link );
 
-                printf( '</select>' );
+	            $out .= sprintf( '</select>' );
             }
+
+	        return $out;
         }
+
+	    /**
+	     * @param NavWidgetLink $parent_link
+	     * @return string
+	     */
+	    public function build_parent_link_options( NavWidgetLink $parent_link = null )
+	    {
+		    $out = '';
+
+		    foreach( $this->get_links() as $link )
+		    {
+			    /* @var $link NavWidgetLink */
+			    if( $parent_link )
+			    {
+				    if( ! $parent_link->is_child( $link ) )
+				    {
+						$out .= $this->link_select_option( $link, $parent_link, ( $parent_link->get_parent_id() == $link->get_id() ) );
+				    }
+			    }
+			    else
+			    {
+				    $out .= $this->link_select_option( $link, null, false );
+			    }
+		    }
+
+		    return $out;
+	    }
     }
