@@ -350,7 +350,7 @@
                 foreach( $link->get_children() as $child )
                 {
                     if( $parent_link &&
-						$parent_link->get_parent_ID() == $link->get_id() )
+						$parent_link->get_id() == $link->get_id() )
 					{
 						$out .= $this->link_select_option( $child, $parent_link, 1 );
 					}
