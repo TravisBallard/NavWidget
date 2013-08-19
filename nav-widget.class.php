@@ -5,10 +5,11 @@
     */
     class NavWidget
     {
-        const OPTION = 'academic_nav_widget';
+        public static $option;
 
         public $links = false;
         public $walker_current_link = false;
+	    public $walker_parent = false;
         public $delete_walker_parent = 0;
         public $delete_walker_parents = array();
 
@@ -16,10 +17,10 @@
         * Construct the NavWidget collection
         * @constructor
         */
-        public function __construct()
+        public function __construct( $option = 'academic_nav_widget' )
         {
+	        self::$option = $option;
             $this->links =  $this->get_links();
-	        //wp_die( sprintf( '<pre>%s</pre>', print_r( $this, 1 ) ) );
         }
 
         /**
@@ -31,7 +32,7 @@
             if( ! $this->links )
             {
                 if( !function_exists('get_option') ||
-                    !( $links = get_option( apply_filters( 'nav_widget_option', self::OPTION ) ) ) )
+                    !( $links = get_option( apply_filters( 'nav_widget_option', self::$option ) ) ) )
                 {
                     return array();
                 }
@@ -56,7 +57,7 @@
         */
         public function save()
         {
-            update_option( self::OPTION, $this->links );
+            update_option( self::$option, $this->links );
         }
 
         /**
@@ -266,12 +267,13 @@
             return count( $this->links ) == 0 ? false : true;
         }
 
-        /**
-        * build list items to be output in admin interface with edit forms for each
-        *
-        * @param NavWidgetLink $link
-        */
-        public function build_link_admin_li( NavWidgetLink $link )
+	    /**
+	     * build list items to be output in admin interface with edit forms for each
+	     *
+	     * @param NavWidgetLink $link
+	     * @param NavWidgetLink $parent
+	     */
+        public function build_link_admin_li( NavWidgetLink $link, NavWidgetLink $parent = null )
         {
             ?>
             <li class="nav-widget-link">
@@ -315,7 +317,7 @@
                         <?php
                             // recursion
                             foreach( $link->get_children() as $child ){
-                                $this->build_link_admin_li( $child );
+                                $this->build_link_admin_li( $child, $link );
                             }
                         ?>
                     </ul>
@@ -340,6 +342,13 @@
 		        return '';
 	        }
 
+	        $parent = false;
+	        if( $parent_link ){
+		        $parent = $this->get_link_by_id( $parent_link->get_parent_ID() );
+	        }
+
+	        //$out = sprintf( '<option><pre>%s</pre></option>', print_r( $parent_link, 1 ) );
+
 	        $out = '';
 	        $select = $selected ? ' selected="selected"' : '';
 
@@ -349,11 +358,23 @@
             {
                 foreach( $link->get_children() as $child )
                 {
+	                $out .= sprintf( '<option>::%s::%s::</option>', ! $parent_link ? 'No Parent' : $parent_link->get_id(), $child->get_id() );
+
+	                $parent = false; // parent_link holds the current link, we want the actual parent of that
+	                if( $parent_link ){
+		                $parent = $this->get_link_by_id( $parent_link->get_parent_ID() );
+	                }
+
+	                /* @var $child NavWidgetLink */
                     if( $parent_link &&
-						$parent_link->get_id() == $link->get_id() )
+						$parent_link->get_id() == $link->get_parent_ID() )
 					{
 						$out .= $this->link_select_option( $child, $parent_link, 1 );
 					}
+                    elseif( $parent && $parent->get_id() == $child->get_parent_ID() )
+                    {
+	                    $out .= $this->link_select_option( $child, $parent, 1 );
+                    }
 					else
 					{
 						$out .= $this->link_select_option( $child, $parent_link );
@@ -377,7 +398,6 @@
 
             if( $this->has_links() )
             {
-
                 $out .= sprintf( '<select name="%s[parent]" id="link-parent%s" >', $name, $parent_link ? '-'.$parent_link->get_id() : '' );
 	            $out .= sprintf( '<option value="0"%s>No Parent</option>', (!$parent_link || !$parent_link->get_parent_ID()) ? ' selected="selected"' : '' );
 
@@ -399,8 +419,14 @@
 
 		    foreach( $this->get_links() as $link )
 		    {
+				$out .= sprintf( '<option>::%s::%s::</option>', ! $parent_link ? 'No Parent' : $parent_link->get_id(), $link->get_id() );
+
 			    /* @var $link NavWidgetLink */
-			    if( $parent_link )
+			    if( $this->walker_parent && $this->walker_parent->get_id() == $link->get_parent_ID() )
+			    {
+				    $out .= $this->link_select_option( $link, $parent_link, 1 );
+			    }
+			    elseif( $parent_link )
 			    {
 				    if( ! $parent_link->is_child( $link ) )
 				    {
@@ -415,4 +441,111 @@
 
 		    return $out;
 	    }
+
+	    /**
+	     * Get parent links only
+	     * @return array<NavWidgetLink>
+	     */
+	    public function get_parent_links()
+	    {
+		    $parent = array();
+		    foreach ($this->get_links() as $link)
+		    {
+			    if (!$link->get_parent_id())
+			    {
+				    $parent[] = $link;
+			    }
+		    }
+		    return $parent;
+	    }
+
+
+	    /**
+	     * Generate a select box from an array NavWidgetLinks
+	     * @param array $attributes attribute list to apply to the select box
+	     * @param array $instructionOption instruction option to add to the select box (assoc array with text and value keys)
+	     * @return string
+	     */
+	    public function buildSelectBox(array $attributes=array(), array $instructionOption=array())
+	    {
+		    $data = $this->buildComboBox($this->get_parent_links());
+
+		    $dom = new \DOMDocument;
+		    $select = $dom->createElement('select');
+		    foreach ($attributes as $attrName => $attrValue)
+		    {
+			    $select->setAttribute($attrName, $attrValue);
+		    }
+
+		    if (count($instructionOption) > 0)
+		    {
+			    if (isset($instructionOption['text']))
+			    {
+				    $option = $dom->createElement('option');
+				    $option->appendChild( $dom->createTextNode($instructionOption['text']) );
+				    if (isset($instructionOption['value']))
+				    {
+					    $option->setAttribute('value', $instructionOption['value']);
+				    }
+				    $select->appendChild($option);
+			    }
+		    }
+
+		    foreach ($data as $node)
+		    {
+			    $option = $dom->createElement('option');
+			    $option->setAttribute('value', $node['value']);
+			    $option->appendChild( $dom->createTextNode($node['text']));
+			    $select->appendChild( $option );
+		    }
+
+		    $dom->appendChild($select);
+		    return $dom->saveHTML();
+	    }
+
+
+
+	    /**
+	     * Generate an array of options for a combobox, from a collection of NavWidgetLink nodes
+	     *
+	     * @param array $entities array of NavWidgetLink nodes
+	     * @param string $breadcrumb
+	     * @throws \Exception
+	     * @return array
+	     */
+	    public function buildComboBox(array $entities, $breadcrumb='')
+	    {
+		    $dataArray = array();
+
+		    if (strlen(trim($breadcrumb)) > 0)
+		    {
+			    $breadcrumb .= ' > ';
+		    }
+
+		    foreach ( $entities as $entity )
+		    {
+			    if (!($entity instanceof NavWidgetLink))
+			    {
+				    throw new \Exception(__CLASS__ .'::buildComboBox() encountered a node that does not implement NavWidgetLink');
+				    break;
+			    }
+
+			    $dataName = $breadcrumb . $entity->get_text();
+			    $dataArray[] = array('value'=>$entity->get_id(), 'text'=>$dataName);
+
+			    $entityChildren = $entity->get_children();
+			    if (count($entityChildren) > 0)
+			    {
+				    // recursion
+				    $childDataArray = $this->comboBox($entityChildren, $dataName);
+				    if (count($childDataArray) > 0)
+				    {
+					    $dataArray = array_merge($dataArray, $childDataArray);
+				    }
+			    }
+		    }
+
+		    return $dataArray;
+	    }
+
     }
